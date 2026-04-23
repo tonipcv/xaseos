@@ -1,0 +1,147 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  name      String?
+  password  String
+  role      String   @default("reviewer")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tasks      Task[]
+  reviews    ExpertReview[]
+  modelPrefs UserModelPref[]
+  apiKeys    UserApiKey[]
+  runs       Run[]
+  datasets   Dataset[]
+}
+
+model UserApiKey {
+  id        String   @id @default(cuid())
+  userId    String
+  provider  String
+  keyValue  String
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, provider])
+}
+
+model UserModelPref {
+  id      String  @id @default(cuid())
+  userId  String
+  modelId String
+  enabled Boolean @default(true)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, modelId])
+}
+
+model Task {
+  id           String   @id @default(cuid())
+  userId       String
+  name         String
+  description  String?
+  systemPrompt String?
+  userPrompt   String
+  modelIds     String[]
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  user User  @relation(fields: [userId], references: [id])
+  runs Run[]
+}
+
+model Run {
+  id           String    @id @default(cuid())
+  userId       String
+  taskId       String
+  taskName     String
+  status       String    @default("pending")
+  createdAt    DateTime  @default(now())
+  completedAt  DateTime?
+  costEstimate Float?
+
+  task      Task            @relation(fields: [taskId], references: [id])
+  user      User            @relation(fields: [userId], references: [id])
+  responses ModelResponse[]
+  reviews   ExpertReview[]
+  datasets  DatasetRun[]
+}
+
+model ModelResponse {
+  id           String  @id @default(cuid())
+  runId        String
+  modelId      String
+  modelName    String
+  provider     String
+  content      String?
+  latencyMs    Int
+  tokensUsed   Int?
+  inputTokens  Int?
+  outputTokens Int?
+  cost         Float?
+  error        String?
+
+  run     Run            @relation(fields: [runId], references: [id], onDelete: Cascade)
+  reviews ExpertReview[]
+}
+
+model ExpertReview {
+  id              String   @id @default(cuid())
+  runId           String
+  modelResponseId String
+  reviewerId      String
+  label           String
+  score           Int
+  rationale       String
+  correctedOutput String?
+  status          String   @default("done")
+  reviewedAt      DateTime @default(now())
+
+  run      Run           @relation(fields: [runId], references: [id])
+  response ModelResponse @relation(fields: [modelResponseId], references: [id])
+  reviewer User          @relation(fields: [reviewerId], references: [id])
+}
+
+model Dataset {
+  id           String   @id @default(cuid())
+  userId       String
+  name         String
+  description  String?
+  exportFormat String   @default("jsonl")
+  createdAt    DateTime @default(now())
+
+  user User         @relation(fields: [userId], references: [id])
+  runs DatasetRun[]
+}
+
+model DatasetRun {
+  datasetId String
+  runId     String
+
+  dataset Dataset @relation(fields: [datasetId], references: [id], onDelete: Cascade)
+  run     Run     @relation(fields: [runId], references: [id])
+
+  @@id([datasetId, runId])
+}
+
+model ResponseCache {
+  id         String   @id @default(cuid())
+  hash       String   @unique
+  modelId    String
+  provider   String
+  response   String
+  tokensUsed Int?
+  createdAt  DateTime @default(now())
+}
