@@ -5,10 +5,10 @@ import { Header } from '@/components/Header';
 import { Card, StatCard } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 import { api } from '@/lib/api';
-import { BarChart3, DollarSign, Clock, Star, CheckCircle2, Database } from 'lucide-react';
+import { BarChart3, DollarSign, Clock, Star, CheckCircle2, Database, Users } from 'lucide-react';
 
 interface Summary {
-  tasks: number; totalRuns: number; completedRuns: number;
+  tasks: number; totalRuns: number; completedRuns: number; failedRuns: number;
   totalReviews: number; datasets: number; totalCost: number; totalTokens: number;
 }
 interface ModelLatency { modelId: string; avgLatency: number; totalResponses: number; errors: number; }
@@ -24,6 +24,8 @@ interface Analytics {
   labelDistribution: LabelDist[];
   costOverTime: DailyCost[];
   runsOverTime: DailyRun[];
+  interRaterAgreement: number | null;
+  totalPairs: number;
 }
 
 const LABEL_COLORS: Record<string, string> = {
@@ -63,7 +65,7 @@ export default function AnalyticsPage() {
     );
   }
 
-  const { summary, avgLatencyPerModel, scoresByModel, labelDistribution } = data;
+  const { summary, avgLatencyPerModel, scoresByModel, labelDistribution, interRaterAgreement, totalPairs } = data;
   const maxLatency = Math.max(...avgLatencyPerModel.map(m => m.avgLatency), 1);
   const maxScore = 10;
   const totalLabels = labelDistribution.reduce((s, l) => s + l.count, 0);
@@ -72,11 +74,16 @@ export default function AnalyticsPage() {
     <div className="p-6 lg:p-10 max-w-[1600px]">
       <Header title="Analytics" />
 
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+      <div className="grid grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 gap-4 mb-8">
         <StatCard label="Total Runs" value={summary.totalRuns} icon={<BarChart3 className="w-4 h-4" />} />
         <StatCard label="Completed" value={summary.completedRuns} icon={<CheckCircle2 className="w-4 h-4" />} />
         <StatCard label="Reviews" value={summary.totalReviews} icon={<Star className="w-4 h-4" />} />
         <StatCard label="Total Cost" value={`$${summary.totalCost.toFixed(4)}`} icon={<DollarSign className="w-4 h-4" />} />
+        <StatCard
+          label="Inter-rater Agreement"
+          value={interRaterAgreement !== null ? `${interRaterAgreement}%` : '—'}
+          icon={<Users className="w-4 h-4" />}
+        />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
@@ -165,6 +172,15 @@ export default function AnalyticsPage() {
           <h2 className="text-sm font-semibold text-warmgray-700 mb-4 flex items-center gap-2">
             <DollarSign className="w-4 h-4 text-warmgray-400" /> Summary
           </h2>
+          {interRaterAgreement !== null && (
+            <div className="mb-4 p-3 bg-sand-100 rounded-lg">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-medium text-warmgray-600">Inter-rater agreement</span>
+                <span className="text-lg font-bold text-slateblue-700">{interRaterAgreement}%</span>
+              </div>
+              <p className="text-[10px] text-warmgray-400 mt-0.5">{totalPairs} reviewer pairs compared</p>
+            </div>
+          )}
           <div className="space-y-3">
             {[
               { label: 'Tasks created', value: summary.tasks },

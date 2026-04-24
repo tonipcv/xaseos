@@ -1,6 +1,9 @@
 import type { Metadata } from "next";
 import { Inter } from 'next/font/google';
 import "./globals.css";
+import { ThemeProvider } from '@/lib/theme';
+import { ToastProvider } from '@/lib/toast';
+import { ToastContainer } from '@/components/ui/Toast';
 
 const inter = Inter({
   subsets: ['latin'],
@@ -8,8 +11,8 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "Xase OS",
-  description: "Run tasks across multiple LLMs, get expert feedback, generate training data",
+  title: "Xase OS — LLM Evaluation Platform",
+  description: "Run tasks across multiple LLMs, collect expert reviews, generate high-quality training datasets.",
 };
 
 export default function RootLayout({
@@ -18,9 +21,14 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       <body className={`${inter.className} antialiased`}>
-        {children}
+        <ThemeProvider>
+          <ToastProvider>
+            {children}
+            <ToastContainer />
+          </ToastProvider>
+        </ThemeProvider>
       </body>
     </html>
   );

@@ -1,0 +1,73 @@
+version: '3.8'
+
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: xaseos-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: xaseos
+      POSTGRES_USER: xaseos
+      POSTGRES_PASSWORD: xaseos_dev_password
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U xaseos -d xaseos"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: runner
+    container_name: xaseos-app
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: postgresql://xaseos:xaseos_dev_password@db:5432/xaseos
+      JWT_SECRET: ${JWT_SECRET:-change-me-in-production-at-least-32-chars}
+      ENCRYPTION_KEY: ${ENCRYPTION_KEY:-change-encryption-key-32-chars-long!}
+      NEXT_PUBLIC_APP_URL: ${NEXT_PUBLIC_APP_URL:-http://localhost:3000}
+    ports:
+      - "3000:3000"
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:3000/api/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+
+  # Development service (optional - for hot reload)
+  dev:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    container_name: xaseos-dev
+    restart: unless-stopped
+    environment:
+      NODE_ENV: development
+      DATABASE_URL: postgresql://xaseos:xaseos_dev_password@db:5432/xaseos
+      JWT_SECRET: ${JWT_SECRET:-xase-os-jwt-secret-32-chars-min!!}
+      ENCRYPTION_KEY: ${ENCRYPTION_KEY:-xase-os-encryption-key-32-chars-long!}
+      NEXT_PUBLIC_APP_URL: http://localhost:3002
+    ports:
+      - "3002:3002"
+    volumes:
+      - .:/app
+      - /app/node_modules
+      - /app/.next
+    depends_on:
+      db:
+        condition: service_healthy
+    profiles:
+      - dev
+
+volumes:
+  postgres_data:

@@ -43,7 +43,13 @@ export async function POST(_req: NextRequest, { params }: { params: { id: string
   if (!task) return NextResponse.json({ error: 'Task not found' }, { status: 404 });
 
   const apiKeys = await prisma.userApiKey.findMany({ where: { userId: session.sub } });
-  const keyMap = Object.fromEntries(apiKeys.map(k => [k.provider, decryptSecret(k.keyValue)]));
+  let keyMap: Record<string, string>;
+  try {
+    keyMap = Object.fromEntries(apiKeys.map(k => [k.provider, decryptSecret(k.keyValue)]));
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'Failed to read API key';
+    return NextResponse.json({ error: message }, { status: 400 });
+  }
 
   let totalCost = run.costEstimate ?? 0;
 

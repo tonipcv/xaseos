@@ -15,6 +15,12 @@ interface Task {
   systemPrompt?: string; userPrompt: string; modelIds: string[];
 }
 interface Model { id: string; name: string; provider: string; enabled: boolean; }
+interface RunResponse {
+  success: boolean;
+  runId: string;
+  responses: unknown[];
+  costEstimate: number;
+}
 
 export default function RunTaskPage() {
   const { id } = useParams();
@@ -49,8 +55,11 @@ export default function RunTaskPage() {
   const handleRun = async () => {
     setRunning(true);
     try {
-      const run = await api.post<{ id: string }>('/api/llm/run', { taskId: task.id });
-      router.push(`/runs/${run.id}`);
+      const run = await api.post<RunResponse>('/api/llm/run', { taskId: task.id });
+      if (!run.runId) {
+        throw new Error('Run did not return an id');
+      }
+      router.push(`/runs/${run.runId}`);
     } catch (err) {
       alert(err instanceof Error ? err.message : 'Run failed');
       setRunning(false);

@@ -9,7 +9,7 @@ import { CheckCircle2, Plus, Trash2, AlertCircle, ChevronDown, ChevronUp } from 
 import { cn } from '@/lib/utils';
 import { api } from '@/lib/api';
 
-interface ApiKeyStatus { id: string; provider: string; hasKey: boolean; createdAt: string; }
+interface ApiKeyStatus { id: string; provider: string; hasKey: boolean; createdAt: string; needsRekey?: boolean; }
 interface Model { id: string; name: string; provider: string; enabled: boolean; }
 
 const PROVIDERS = [
@@ -105,6 +105,7 @@ export default function SettingsPage() {
 
           {PROVIDERS.map((provider) => {
             const providerHasKey = hasKey(provider.id);
+            const providerNeedsRekey = keys.some(k => k.provider === provider.id && k.needsRekey);
             const isExpanded = expandedProvider === provider.id;
             const providerModels = getProviderModels(provider.id);
             const enabledCount = getEnabledCount(provider.id);
@@ -124,6 +125,11 @@ export default function SettingsPage() {
                           <Badge variant="success" className="text-[10px]">
                             <CheckCircle2 className="w-3 h-3 mr-1" />Connected
                           </Badge>
+                          {providerNeedsRekey && (
+                            <Badge variant="warning" className="text-[10px]">
+                              Re-save key
+                            </Badge>
+                          )}
                         </div>
                       ) : (
                         <p className="text-xs text-warmgray-400">No API key configured</p>
@@ -188,9 +194,12 @@ export default function SettingsPage() {
             <div className="flex items-start gap-2">
               <AlertCircle className="w-4 h-4 text-yellow-600 mt-0.5 flex-shrink-0" />
               <div>
-                <p className="text-sm font-medium text-yellow-800">Local Storage</p>
+                <p className="text-sm font-medium text-yellow-800">Server-side Storage</p>
                 <p className="text-xs text-yellow-700 mt-1">
-                  API keys are stored only in your browser. They never leave your device.
+                  API keys are stored in your account and used only on the server to run models.
+                </p>
+                <p className="text-xs text-yellow-700 mt-2">
+                  If you see a Re-save key badge, the saved value came from the old encrypted format and needs to be saved again once.
                 </p>
               </div>
             </div>
@@ -209,7 +218,7 @@ export default function SettingsPage() {
               </li>
               <li className="flex items-start gap-2">
                 <span className="text-slateblue-500 font-medium">3.</span>
-                Keys are masked (sk-...xxxx) for security
+                Keys are masked in the UI after saving
               </li>
               <li className="flex items-start gap-2">
                 <span className="text-slateblue-500 font-medium">4.</span>

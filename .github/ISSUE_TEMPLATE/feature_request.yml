@@ -1,0 +1,50 @@
+name: Feature Request
+description: Propose a new feature or enhancement
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for the idea! Please describe the feature you'd like to see in Xase OS.
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem statement
+      description: What problem are you trying to solve? Why does the current experience fall short?
+      placeholder: "When I evaluate 50 tasks, I have to click 'Run' 50 times because there's no batch mode."
+    validations:
+      required: true
+
+  - type: textarea
+    id: solution
+    attributes:
+      label: Proposed solution
+      description: Describe the feature you'd like to see.
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: Any workarounds you've tried, or alternative designs you considered.
+
+  - type: dropdown
+    id: phase
+    attributes:
+      label: Which phase does this fit?
+      options:
+        - v0.2 (current)
+        - v0.3 (planned)
+        - v0.4 (future)
+        - Not sure
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: contribution
+    attributes:
+      label: Would you like to contribute this feature?
+      options:
+        - label: Yes, I'm willing to open a PR for this

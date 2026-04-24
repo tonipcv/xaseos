@@ -2,6 +2,54 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ── Light mode color tokens ────────────────────────────────── */
+:root {
+  /* sand */
+  --sand-50:  245 242 239;
+  --sand-100: 235 230 225;
+  --sand-200: 216 208 196;
+  --sand-300: 196 184 168;
+  --sand-400: 184 173 160;
+  --sand-500: 168 155 141;
+  /* warmgray */
+  --wg-400: 168 160 152;
+  --wg-500: 143 135 128;
+  --wg-600: 122 114 107;
+  --wg-700:  95  90  87;
+  --wg-800:  74  69  66;
+  /* slateblue */
+  --sb-400: 107 122 143;
+  --sb-500:  63  78  99;
+  --sb-600:  47  62  82;
+  --sb-700:  31  53  82;
+  --sb-800:  21  40  66;
+  --sb-900:  13  31  51;
+}
+
+/* ── Dark mode color tokens ─────────────────────────────────── */
+.dark {
+  /* sand → inverted to dark slate blues */
+  --sand-50:   13  31  51;   /* slateblue-900 */
+  --sand-100:  21  40  66;   /* slateblue-800 */
+  --sand-200:  31  53  82;   /* slateblue-700 */
+  --sand-300:  47  62  82;   /* slateblue-600 */
+  --sand-400:  63  78  99;   /* slateblue-500 */
+  --sand-500:  63  78  99;
+  /* warmgray → lighter for readability on dark bg */
+  --wg-400: 184 173 160;
+  --wg-500: 196 184 168;
+  --wg-600: 216 208 196;
+  --wg-700: 235 230 225;
+  --wg-800: 245 242 239;
+  /* slateblue → lighter for visibility on dark bg */
+  --sb-400: 139 162 193;
+  --sb-500: 139 162 193;
+  --sb-600: 107 122 143;
+  --sb-700:  88 120 168;
+  --sb-800: 107 140 186;
+  --sb-900: 245 242 239;
+}
+
 @layer base {
   body {
     @apply bg-sand-50 text-warmgray-700;
@@ -20,12 +68,12 @@
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #B8ADA0;
+  background: rgb(var(--sand-300));
   border-radius: 3px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #8F8780;
+  background: rgb(var(--wg-500));
 }
 
 /* Code blocks */
@@ -36,3 +84,34 @@ pre {
 code {
   @apply font-mono text-sm;
 }
+
+/* Smooth theme transitions */
+*, *::before, *::after {
+  transition: background-color 0.15s ease, border-color 0.15s ease, color 0.1s ease;
+}
+
+/* Dark mode overrides for standard Tailwind white */
+.dark .bg-white {
+  background-color: rgb(var(--sand-100));
+}
+.dark input,
+.dark textarea,
+.dark select {
+  background-color: rgb(var(--sand-200));
+  color: rgb(var(--wg-700));
+  border-color: rgb(var(--sand-300));
+}
+.dark input::placeholder,
+.dark textarea::placeholder {
+  color: rgb(var(--wg-500));
+}
+/* Red/yellow/status colors keep same in dark mode */
+.dark .bg-red-50   { background-color: rgba(239 68 68 / 0.12); }
+.dark .bg-yellow-50 { background-color: rgba(234 179 8 / 0.10); }
+.dark .border-red-200  { border-color: rgba(239 68 68 / 0.35); }
+.dark .border-yellow-200 { border-color: rgba(234 179 8 / 0.30); }
+.dark .text-red-600  { color: #f87171; }
+.dark .text-red-700  { color: #fca5a5; }
+.dark .text-yellow-800 { color: #fde68a; }
+.dark .text-yellow-700 { color: #fde68a; }
+.dark .bg-red-100 { background-color: rgba(239 68 68 / 0.15); }

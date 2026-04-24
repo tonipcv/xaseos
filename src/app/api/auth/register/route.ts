@@ -3,6 +3,9 @@ import { prisma } from '@/lib/db';
 import { signToken, createAuthCookie } from '@/lib/auth';
 import bcrypt from 'bcryptjs';
 import { createId } from '@/lib/utils';
+import { createRouteLogger } from '@/lib/logger';
+
+const log = createRouteLogger('/api/auth/register');
 
 export async function POST(req: NextRequest) {
   try {
@@ -37,7 +40,7 @@ export async function POST(req: NextRequest) {
     res.cookies.set(cookie);
     return res;
   } catch (err) {
-    console.error(err);
+    log.error({ err }, 'registration failed');
     return NextResponse.json({ error: 'Registration failed' }, { status: 500 });
   }
 }

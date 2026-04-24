@@ -58,8 +58,9 @@ model Task {
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
-  user User  @relation(fields: [userId], references: [id])
-  runs Run[]
+  user     User          @relation(fields: [userId], references: [id])
+  runs     Run[]
+  versions TaskVersion[]
 }
 
 model Run {
@@ -144,4 +145,20 @@ model ResponseCache {
   response   String
   tokensUsed Int?
   createdAt  DateTime @default(now())
+}
+
+model TaskVersion {
+  id           String   @id @default(cuid())
+  taskId       String
+  version      Int
+  name         String
+  description  String?
+  systemPrompt String?
+  userPrompt   String
+  modelIds     String[]
+  createdAt    DateTime @default(now())
+
+  task Task @relation(fields: [taskId], references: [id], onDelete: Cascade)
+
+  @@unique([taskId, version])
 }

@@ -1,0 +1,76 @@
+name: Bug Report
+description: Report a reproducible bug in Xase OS
+labels: ["bug", "triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting a bug! Please fill out the form below to help us reproduce and fix it.
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Describe the bug
+      description: A clear description of what the bug is.
+      placeholder: When I click "Run", the page shows a 500 error instead of running the models.
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Steps to reproduce
+      description: Step-by-step instructions to reproduce the issue.
+      value: |
+        1. Go to Tasks page
+        2. Click 'New Task'
+        3. Fill in the form and click 'Run'
+        4. See error
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behaviour
+      description: What should happen?
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behaviour
+      description: What actually happens? Include any error messages or screenshots.
+    validations:
+      required: true
+
+  - type: dropdown
+    id: setup
+    attributes:
+      label: Setup
+      options:
+        - Docker Compose
+        - Local (npm run dev)
+        - Production deployment
+    validations:
+      required: true
+
+  - type: input
+    id: node-version
+    attributes:
+      label: Node.js version
+      placeholder: "20.x"
+
+  - type: input
+    id: browser
+    attributes:
+      label: Browser (if UI issue)
+      placeholder: "Chrome 124, Safari 17…"
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant logs
+      description: Paste any relevant server or browser console output.
+      render: shell

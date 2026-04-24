@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { getSession } from '@/lib/auth';
+import { createRouteLogger } from '@/lib/logger';
+
+const log = createRouteLogger('/api/runs');
 
 export async function GET(req: NextRequest) {
   const session = await getSession();
@@ -9,11 +12,31 @@ export async function GET(req: NextRequest) {
   const url = new URL(req.url);
   const summaryMode = url.searchParams.get('summary') === '1' || url.searchParams.get('summary') === 'true';
   const limitParam = parseInt(url.searchParams.get('limit') ?? '', 10);
-  const limit = Number.isFinite(limitParam) && limitParam > 0 ? Math.min(limitParam, 50) : undefined;
+  const limit = Number.isFinite(limitParam) && limitParam > 0 ? Math.min(limitParam, 100) : undefined;
+  const statusFilter = url.searchParams.get('status') || undefined;
+  const fields = url.searchParams.get('fields')?.split(',').filter(Boolean) ?? [];
+
+  const where = {
+    userId: session.sub,
+    ...(statusFilter && { status: statusFilter }),
+  };
+
+  // Lightweight mode for dropdown selection (datasets page)
+  if (fields.length > 0 && !summaryMode) {
+    const select: Record<string, boolean> = {};
+    for (const f of fields) select[f] = true;
+    const runs = await prisma.run.findMany({
+      where,
+      orderBy: { createdAt: 'desc' },
+      take: limit,
+      select,
+    });
+    return NextResponse.json(runs);
+  }
 
   if (summaryMode) {
     const runs = await prisma.run.findMany({
-      where: { userId: session.sub },
+      where,
       orderBy: { createdAt: 'desc' },
       take: limit,
       select: {
@@ -37,7 +60,7 @@ export async function GET(req: NextRequest) {
   }
 
   const runs = await prisma.run.findMany({
-    where: { userId: session.sub },
+    where,
     include: { responses: { include: { reviews: true } } },
     orderBy: { createdAt: 'desc' },
     take: limit,
@@ -69,7 +92,7 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json(run, { status: 201 });
   } catch (err) {
-    console.error(err);
+    log.error({ err }, 'failed to create run');
     return NextResponse.json({ error: 'Failed to create run' }, { status: 500 });
   }
 }

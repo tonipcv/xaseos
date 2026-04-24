@@ -9,9 +9,10 @@ import { Badge } from '@/components/ui/Badge';
 import { REVIEW_LABELS } from '@/types';
 import type { ReviewLabel } from '@/types';
 import Link from 'next/link';
-import { ArrowLeft, Clock, MessageSquare, CheckCircle2, AlertCircle, Star, RotateCcw, Columns, List, DollarSign } from 'lucide-react';
+import { ArrowLeft, Clock, MessageSquare, CheckCircle2, AlertCircle, Star, RotateCcw, Columns, List, DollarSign, BrainCircuit } from 'lucide-react';
 import { formatDate, cn } from '@/lib/utils';
 import { api } from '@/lib/api';
+import { useToast } from '@/lib/toast';
 
 interface Review {
   id: string; label: string; score: number; rationale: string;
@@ -28,14 +29,17 @@ interface Run {
   id: string; taskId: string; taskName: string; status: string;
   createdAt: string; completedAt?: string; costEstimate?: number;
   responses: Response[];
+  task?: { userPrompt: string; systemPrompt?: string | null };
 }
 
 export default function RunDetailPage() {
   const { id } = useParams();
+  const { toast } = useToast();
   const [run, setRun] = useState<Run | null>(null);
   const [loading, setLoading] = useState(true);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [retrying, setRetrying] = useState(false);
+  const [judging, setJudging] = useState(false);
   const [sideBySide, setSideBySide] = useState(false);
   const [selectedResponse, setSelectedResponse] = useState<Response | null>(null);
   const [showReviewModal, setShowReviewModal] = useState(false);
@@ -81,10 +85,25 @@ export default function RunDetailPage() {
     try {
       const updated = await api.post<Run>(`/api/runs/${id}/retry`, {});
       setRun(updated);
+      toast('Retry completed', 'success');
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'Retry failed');
+      toast(err instanceof Error ? err.message : 'Retry failed', 'error');
     } finally {
       setRetrying(false);
+    }
+  };
+
+  const handleJudge = async () => {
+    if (!run) return;
+    setJudging(true);
+    try {
+      const result = await api.post<{ judged: number }>(`/api/llm/judge`, { runId: run.id });
+      toast(`LLM Judge scored ${result.judged} response${result.judged === 1 ? '' : 's'}`, 'success');
+      await fetchRun();
+    } catch (err) {
+      toast(err instanceof Error ? err.message : 'Judge failed', 'error');
+    } finally {
+      setJudging(false);
     }
   };
 
@@ -116,8 +135,9 @@ export default function RunDetailPage() {
       setShowReviewModal(false);
       setSelectedResponse(null);
       setReviewForm({ label: 'good', score: 7, rationale: '', correctedOutput: '' });
+      toast('Review saved', 'success');
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'Failed to save review');
+      toast(err instanceof Error ? err.message : 'Failed to save review', 'error');
     } finally {
       setSavingReview(false);
     }
@@ -157,6 +177,9 @@ export default function RunDetailPage() {
             {sideBySide ? <List className="w-4 h-4" /> : <Columns className="w-4 h-4" />}
             {sideBySide ? 'List' : 'Side-by-side'}
           </Button>
+          <Button variant="secondary" size="sm" onClick={handleJudge} loading={judging}>
+            <BrainCircuit className="w-4 h-4" />LLM Judge
+          </Button>
           {failedCount > 0 && (
             <Button variant="secondary" size="sm" onClick={handleRetry} loading={retrying}>
               <RotateCcw className="w-4 h-4" />Retry Failed
@@ -164,6 +187,13 @@ export default function RunDetailPage() {
           )}
         </div>
       </Header>
+
+      {run.task?.userPrompt && (
+        <div className="mb-4">
+          <p className="text-[10px] text-warmgray-400 uppercase tracking-wide mb-1">Input</p>
+          <p className="text-sm text-warmgray-700 line-clamp-2">{run.task.userPrompt}</p>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 mb-6">
         <Card className="flex items-center gap-3">

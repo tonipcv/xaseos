@@ -1,69 +1,239 @@
-# xaseos
+<div align="center">
 
-Xase OS is an LLM Evaluation Platform built with Next.js 14 + React + TypeScript + PostgreSQL.
+# Xase OS
 
-## Features
+### Open-source LLM Evaluation & Fine-tuning Data Platform
 
-- **Multi-Provider LLM Integration**: Run evaluation tasks across OpenAI, Anthropic, Google, Grok, Groq, and Ollama
-- **Side-by-Side Comparison**: Compare model responses side-by-side with cost and latency tracking
-- **Expert Review System**: Structured reviews with labels (excellent/good/acceptable/poor/failure), scores (1-10), and corrections
-- **Response Caching**: Automatic caching to reduce API costs for identical prompts
-- **Dataset Export**: Export training data in JSONL, CSV, or JSON format
-- **Analytics Dashboard**: Cost tracking, latency metrics, and review distributions
+[![CI](https://github.com/tonipcv/xaseos/actions/workflows/ci.yml/badge.svg)](https://github.com/tonipcv/xaseos/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5-blue?logo=typescript)](https://www.typescriptlang.org/)
+[![Next.js](https://img.shields.io/badge/Next.js-14-black?logo=next.js)](https://nextjs.org/)
+[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](./CONTRIBUTING.md)
 
-## Tech Stack
+**Run prompts across 6 LLM providers in parallel · Collect expert reviews · Export fine-tuning datasets**
 
-- **Frontend**: Next.js 14, React 18, TypeScript, Tailwind CSS
-- **Backend**: Next.js API Routes, Prisma ORM
-- **Database**: PostgreSQL
-- **Authentication**: JWT-based with httpOnly cookies
-- **Security**: Encrypted API keys, environment-based secrets
+[Quick Start](#-quick-start) · [Features](#-features) · [API Reference](#-api-routes) · [Contributing](./CONTRIBUTING.md) · [Roadmap](#-roadmap)
 
-## Quick Start
+</div>
+
+---
+
+## Why Xase OS?
+
+| Problem | How Xase OS solves it |
+|---------|----------------------|
+| Testing one model at a time is slow | Run OpenAI, Anthropic, Google, Grok, Groq, and Ollama **in parallel** |
+| Evaluating quality by hand doesn't scale | **LLM-as-a-Judge** scores responses automatically; humans review the edge cases |
+| Fine-tuning data is scattered | Everything flows from prompt → run → review → **JSONL/HuggingFace dataset** |
+| API costs spiral out of control | **Deterministic response caching** — identical prompts never hit the API twice |
+| No audit trail for prompt changes | **Full version history** — every task edit creates a restorable snapshot |
+
+---
+
+## ⚡ Quick Start
+
+### Docker (3 commands)
 
 ```bash
-# Install dependencies
-npm install
-
-# Set up environment
-cp .env.example .env
-# Edit .env with your database URL and JWT secret
-
-# Run migrations
-npm run migrate
-
-# Generate Prisma client
-npx prisma generate
-
-# Seed test user
-DATABASE_URL="your-db-url" node scripts/seed.js
-
-# Start development server
-npm run dev
+git clone https://github.com/tonipcv/xaseos.git && cd xaseos
+cp .env.example .env   # edit DATABASE_URL, JWT_SECRET, ENCRYPTION_KEY
+docker-compose up -d
 ```
 
-## Environment Variables
+Open [http://localhost:3000](http://localhost:3000) — login: `admin@xase.ai` / `admin123`
+
+### Local Development
+
+```bash
+git clone https://github.com/tonipcv/xaseos.git && cd xaseos
+cp .env.example .env        # fill in required vars (see .env.example)
+npm install
+node scripts/migrate.js     # idempotent SQL migrations
+npx prisma generate
+node scripts/seed.js        # creates admin@xase.ai / admin123
+npm run dev                 # http://localhost:3002
+```
+
+---
+
+## ✨ Features
+
+### Multi-Provider LLM Execution
+
+| Provider | Models |
+|----------|--------|
+| **OpenAI** | GPT-4o, GPT-4o-mini |
+| **Anthropic** | Claude 3.5 Sonnet, Claude 3 Opus |
+| **Google** | Gemini 1.5 Pro, Gemini 1.5 Flash |
+| **Grok (xAI)** | Grok Beta |
+| **Groq** | Llama 3.3 70B, Mixtral 8x7B |
+| **Ollama** | Any locally-served model |
+
+### Evaluation
+
+- **Side-by-Side Comparison** — latency, token count, cost per response
+- **Expert Review System** — labels (`excellent / good / acceptable / poor / failure`), scores 0–10, corrected outputs
+- **LLM-as-a-Judge** — automated GPT-4o-mini scoring for scale
+- **Annotation Queue** — review pending responses without losing context
+- **Inter-rater Agreement** — pairwise % agreement across multiple reviewers
+
+### Data & Datasets
+
+- **Import** — JSON / JSONL upload, rows become runs automatically
+- **Export** — JSONL, CSV, JSON with one click
+- **HuggingFace Hub Push** — one-click push to `datasets/<repo>`
+- **Task Version History** — every edit snapshots the previous state; restore any version
+
+### Analytics
+
+- Latency & score charts per model (bar charts via Recharts)
+- Label distribution with proportional bars
+- Cumulative and per-run API cost tracking
+
+### Task Templates (pre-built rubrics)
+
+| Template | Use case |
+|----------|----------|
+| Healthcare Safety | Medical Q&A accuracy and harm avoidance |
+| Legal Accuracy | General legal information quality |
+| Code Review | Bug detection, security, style |
+| Creative Writing | Storytelling, engagement, originality |
+| Red Teaming | Safety guardrail and refusal testing |
+
+### Platform
+
+- **Dark Mode** — system-aware, toggleable, persisted in localStorage
+- **Response Caching** — hash-based, zero duplicate API calls
+- **Rate Limiting** — per-user in-memory limiter (10 LLM req/min)
+- **JWT Auth** — httpOnly cookies, Argon2id password hashing
+
+---
+
+## 🏗 Architecture
+
+```
+┌──────────────┐     REST API      ┌─────────────────────┐
+│  Next.js 14  │ ◄───────────────► │   API Routes        │
+│  App Router  │                   │  /api/tasks         │
+│  React 18    │                   │  /api/llm/run       │  ◄── Parallel LLM calls
+│  Tailwind    │                   │  /api/reviews       │
+└──────────────┘                   │  /api/datasets      │
+                                   │  /api/analytics     │
+                                   └──────────┬──────────┘
+                                              │ Prisma ORM
+                                   ┌──────────▼──────────┐
+                                   │     PostgreSQL       │
+                                   │  tasks · runs        │
+                                   │  reviews · datasets  │
+                                   │  api_keys (AES-GCM)  │
+                                   └─────────────────────┘
+```
+
+---
+
+## 🔌 API Routes
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `POST` | `/api/llm/run` | Run a task across all selected models |
+| `POST` | `/api/llm/stream` | Streaming SSE response from a single model |
+| `POST` | `/api/llm/judge` | LLM-as-a-Judge automated scoring |
+| `POST` | `/api/llm/playground` | Single-model prompt test |
+| `GET/POST` | `/api/tasks` | List / create tasks |
+| `PUT/DELETE` | `/api/tasks/:id` | Update / delete task (snapshots on PUT) |
+| `GET` | `/api/tasks/:id/versions` | Task version history |
+| `POST` | `/api/reviews` | Create or update expert review |
+| `GET` | `/api/queue` | Pending unreviewed responses |
+| `GET/POST` | `/api/datasets` | List / create datasets |
+| `POST` | `/api/datasets/import` | Import JSON/JSONL file |
+| `GET` | `/api/datasets/:id/export` | Download dataset |
+| `POST` | `/api/datasets/:id/push-to-hub` | Push to HuggingFace Hub |
+| `GET` | `/api/analytics` | Full analytics payload |
+| `GET` | `/api/openapi.json` | OpenAPI 3.1 specification |
+
+---
+
+## ⚙️ Environment Variables
 
 | Variable | Description | Required |
 |----------|-------------|----------|
-| `DATABASE_URL` | PostgreSQL connection string | Yes |
-| `JWT_SECRET` | Min 32 characters for auth tokens | Yes |
-| `NEXT_PUBLIC_APP_URL` | App URL (default: http://localhost:3002) | No |
+| `DATABASE_URL` | PostgreSQL connection string | ✅ |
+| `JWT_SECRET` | Min 32 chars — signs auth tokens | ✅ |
+| `ENCRYPTION_KEY` | Min 32 chars — encrypts stored API keys | ✅ |
+| `NEXT_PUBLIC_APP_URL` | App URL (default: `http://localhost:3002`) | No |
 
-## Project Structure
+See [`.env.example`](./.env.example) for the full reference with generation commands.
+
+---
+
+## 📁 Project Structure
 
 ```
-├── prisma/           # Database schema and migrations
-├── scripts/          # Utility scripts (seed, migrate)
+├── .github/
+│   ├── workflows/         # CI/CD: lint → typecheck → test → Docker build
+│   ├── ISSUE_TEMPLATE/    # Bug report & feature request templates
+│   └── pull_request_template.md
+├── prisma/                # Schema (client-only; Prisma migrate is forbidden)
+├── scripts/
+│   ├── migrate.js         # Runs migrate.sql via pg driver (idempotent)
+│   ├── migrate.sql        # All DDL with IF NOT EXISTS guards
+│   └── seed.js            # Creates test admin user
 ├── src/
-│   ├── app/          # Next.js app routes
-│   ├── components/   # React components
-│   ├── lib/          # Utilities (auth, db, llm, cache)
-│   └── types/        # TypeScript types
-├── public/           # Static assets
-└── .env.example      # Environment template
+│   ├── app/
+│   │   ├── (auth)/        # Login / register pages
+│   │   ├── (dashboard)/   # Authenticated pages (tasks, runs, analytics…)
+│   │   └── api/           # REST API routes
+│   ├── components/        # Shared UI components
+│   ├── lib/               # auth, db, llm, cache, logger, secrets, store
+│   └── types/             # Shared TypeScript interfaces
+├── examples/              # Usage examples and cookbooks
+└── AGENTS.md              # Guide for AI-assisted contributions
 ```
 
-## License
+---
 
-MIT
+## 🗺 Roadmap
+
+### v0.2 — In Progress
+- [x] LLM-as-a-Judge automated scoring
+- [x] HuggingFace Hub push
+- [x] Task version history
+- [x] Response caching
+- [ ] **Streaming SSE** responses (in progress)
+- [ ] **OpenAPI spec** at `/api/openapi.json`
+
+### v0.3 — Planned
+- [ ] BullMQ job queue for long-running batch evaluations
+- [ ] Redis-based rate limiting (multi-instance safe)
+- [ ] Webhook notifications (Slack, Discord)
+- [ ] Team workspaces with role-based access
+
+### v0.4 — Future
+- [ ] Python SDK (`pip install xaseos`)
+- [ ] Custom metric plugins
+- [ ] Multi-language README (PT-BR, ES, ZH)
+- [ ] Self-hosted telemetry dashboard
+
+> Vote on features or propose new ones in [GitHub Discussions](https://github.com/tonipcv/xaseos/discussions).
+
+---
+
+## 🤝 Contributing
+
+See [CONTRIBUTING.md](./CONTRIBUTING.md) for setup, conventions, and architecture diagrams.
+
+Quick contribution workflow:
+```bash
+git checkout -b feat/my-feature develop
+# make changes
+npm run lint && npm run test
+git commit -m "feat: describe your change"
+# open PR against develop
+```
+
+---
+
+## 📄 License
+
+[MIT](./LICENSE) © 2024 Xase AI
+

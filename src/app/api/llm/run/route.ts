@@ -5,20 +5,39 @@ import { callLLM, estimateCost } from '@/lib/llm';
 import { DEFAULT_MODELS } from '@/types';
 import { createId } from '@/lib/utils';
 import { decryptSecret } from '@/lib/secrets';
+import { llmRateLimit, createRateLimitHeaders } from '@/lib/middleware/rate-limit';
+import { parseBody, LLMRunSchema } from '@/lib/validation';
+import { createRouteLogger } from '@/lib/logger';
+
+const log = createRouteLogger('/api/llm/run');
 
 export async function POST(req: NextRequest) {
+  // Rate limiting check
+  const rateLimitResult = await llmRateLimit(req);
+  if (!rateLimitResult.allowed) {
+    return rateLimitResult.response!;
+  }
+
   const session = await getSession();
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
+  const { data: body, error: parseError } = await parseBody(req, LLMRunSchema);
+  if (parseError) return parseError;
+
   try {
-    const { taskId } = await req.json();
-    if (!taskId) return NextResponse.json({ error: 'taskId required' }, { status: 400 });
+    const { taskId } = body;
 
     const task = await prisma.task.findFirst({ where: { id: taskId, userId: session.sub } });
     if (!task) return NextResponse.json({ error: 'Task not found' }, { status: 404 });
 
     const apiKeys = await prisma.userApiKey.findMany({ where: { userId: session.sub } });
-    const keyMap = Object.fromEntries(apiKeys.map(k => [k.provider, decryptSecret(k.keyValue)]));
+    let keyMap: Record<string, string>;
+    try {
+      keyMap = Object.fromEntries(apiKeys.map(k => [k.provider, decryptSecret(k.keyValue)]));
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to read API key';
+      return NextResponse.json({ error: message }, { status: 400 });
+    }
 
     const taskModels = DEFAULT_MODELS.filter(m => task.modelIds.includes(m.id));
     if (taskModels.length === 0) {
@@ -103,9 +122,29 @@ export async function POST(req: NextRequest) {
       include: { responses: true },
     });
 
-    return NextResponse.json(run);
+    if (!run) {
+      return NextResponse.json({ error: 'Run not found' }, { status: 404 });
+    }
+
+    const validResponses = run.responses.filter(response => !response.error);
+    const response = NextResponse.json({
+      success: true,
+      runId: run.id,
+      responses: validResponses,
+      costEstimate: totalCost,
+    });
+
+    // Add rate limit headers
+    if (rateLimitResult.info) {
+      const headers = createRateLimitHeaders(rateLimitResult.info);
+      Object.entries(headers).forEach(([key, value]) => {
+        response.headers.set(key, value as string);
+      });
+    }
+
+    return response;
   } catch (err) {
-    console.error(err);
+    log.error({ err }, 'llm run failed');
     return NextResponse.json({ error: 'Run failed' }, { status: 500 });
   }
 }

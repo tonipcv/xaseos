@@ -6,7 +6,7 @@ export async function GET() {
   const session = await getSession();
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-  const [runs, reviews, tasks, datasets] = await Promise.all([
+  const [runs, reviews, allReviewsForRuns, tasks, datasets] = await Promise.all([
     prisma.run.findMany({
       where: { userId: session.sub },
       include: { responses: true },
@@ -15,6 +15,10 @@ export async function GET() {
     prisma.expertReview.findMany({
       where: { reviewerId: session.sub },
       include: { response: true },
+    }),
+    prisma.expertReview.findMany({
+      where: { run: { userId: session.sub } },
+      select: { modelResponseId: true, reviewerId: true, score: true, label: true },
     }),
     prisma.task.count({ where: { userId: session.sub } }),
     prisma.dataset.count({ where: { userId: session.sub } }),
@@ -76,6 +80,25 @@ export async function GET() {
     return acc;
   }, {});
 
+  // Inter-rater agreement: pairwise % agreement on label for responses with ≥2 reviewers
+  const byResponse: Record<string, { reviewerId: string; label: string }[]> = {};
+  for (const r of allReviewsForRuns) {
+    if (!byResponse[r.modelResponseId]) byResponse[r.modelResponseId] = [];
+    byResponse[r.modelResponseId].push({ reviewerId: r.reviewerId, label: r.label });
+  }
+  let agreedPairs = 0, totalPairs = 0;
+  for (const reviewers of Object.values(byResponse)) {
+    if (reviewers.length < 2) continue;
+    for (let i = 0; i < reviewers.length; i++) {
+      for (let j = i + 1; j < reviewers.length; j++) {
+        totalPairs++;
+        if (reviewers[i].label === reviewers[j].label) agreedPairs++;
+      }
+    }
+  }
+  const interRaterAgreement = totalPairs > 0 ? parseFloat(((agreedPairs / totalPairs) * 100).toFixed(1)) : null;
+  const automatedReviews = allReviewsForRuns.filter(r => r.label === 'automated' || r.reviewerId === session.sub).length;
+
   return NextResponse.json({
     summary: {
       tasks,
@@ -92,5 +115,7 @@ export async function GET() {
     labelDistribution: Object.entries(labelDist).map(([label, count]) => ({ label, count })),
     costOverTime,
     runsOverTime: Object.entries(runsOverTime).map(([date, count]) => ({ date, count })),
+    interRaterAgreement,
+    totalPairs,
   });
 }

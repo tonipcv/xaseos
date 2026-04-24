@@ -104,6 +104,21 @@ CREATE TABLE IF NOT EXISTS "ResponseCache" (
   "createdAt"  TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
+CREATE TABLE IF NOT EXISTS "TaskVersion" (
+  "id"           TEXT PRIMARY KEY,
+  "taskId"       TEXT NOT NULL REFERENCES "Task"("id") ON DELETE CASCADE,
+  "version"      INTEGER NOT NULL,
+  "name"         TEXT NOT NULL,
+  "description"  TEXT,
+  "systemPrompt" TEXT,
+  "userPrompt"   TEXT NOT NULL,
+  "modelIds"     TEXT[] NOT NULL DEFAULT '{}',
+  "createdAt"    TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- Add isAutomatic flag support to ExpertReview via status column (already exists)
+-- status = 'automated' means LLM-as-a-Judge, status = 'done' means human review
+
 -- Indexes for performance
 CREATE INDEX IF NOT EXISTS "Task_userId_idx" ON "Task"("userId");
 CREATE INDEX IF NOT EXISTS "Run_userId_idx" ON "Run"("userId");
@@ -113,3 +128,14 @@ CREATE INDEX IF NOT EXISTS "ModelResponse_runId_idx" ON "ModelResponse"("runId")
 CREATE INDEX IF NOT EXISTS "ExpertReview_runId_idx" ON "ExpertReview"("runId");
 CREATE INDEX IF NOT EXISTS "ExpertReview_modelResponseId_idx" ON "ExpertReview"("modelResponseId");
 CREATE INDEX IF NOT EXISTS "Dataset_userId_idx" ON "Dataset"("userId");
+CREATE INDEX IF NOT EXISTS "TaskVersion_taskId_idx" ON "TaskVersion"("taskId");
+
+-- Add unique constraint to prevent duplicate versions per task
+CREATE UNIQUE INDEX IF NOT EXISTS "TaskVersion_taskId_version_key" ON "TaskVersion"("taskId", "version");
+
+-- Add CHECK constraints for status columns to enforce valid values
+ALTER TABLE "Run" DROP CONSTRAINT IF EXISTS "Run_status_check";
+ALTER TABLE "Run" ADD CONSTRAINT "Run_status_check" CHECK (status IN ('pending', 'running', 'completed', 'failed'));
+
+ALTER TABLE "ExpertReview" DROP CONSTRAINT IF EXISTS "ExpertReview_status_check";
+ALTER TABLE "ExpertReview" ADD CONSTRAINT "ExpertReview_status_check" CHECK (status IN ('done', 'automated', 'imported'));

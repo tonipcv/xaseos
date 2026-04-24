@@ -1,0 +1,28 @@
+# Development Dockerfile with hot reload
+FROM node:20-alpine
+
+WORKDIR /app
+
+# Install dependencies
+RUN apk add --no-cache libc6-compat openssl
+
+# Copy package files
+COPY package.json package-lock.json* ./
+
+# Install all dependencies (including dev)
+RUN npm ci
+
+# Copy prisma schema for generation
+COPY prisma ./prisma
+
+# Generate Prisma client
+RUN npx prisma generate
+
+# Copy the rest of the application
+COPY . .
+
+# Expose the development port
+EXPOSE 3002
+
+# Start development server
+CMD ["npm", "run", "dev"]

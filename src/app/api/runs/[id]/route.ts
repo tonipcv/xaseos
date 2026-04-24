@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { getSession } from '@/lib/auth';
+import { createRouteLogger } from '@/lib/logger';
+
+const log = createRouteLogger('/api/runs/[id]');
 
 export async function GET(_req: NextRequest, { params }: { params: { id: string } }) {
   const session = await getSession();
@@ -9,6 +12,9 @@ export async function GET(_req: NextRequest, { params }: { params: { id: string 
   const run = await prisma.run.findFirst({
     where: { id: params.id, userId: session.sub },
     include: {
+      task: {
+        select: { userPrompt: true, systemPrompt: true }
+      },
       responses: {
         include: {
           reviews: {
@@ -49,7 +55,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
     });
     return NextResponse.json(run);
   } catch (err) {
-    console.error(err);
+    log.error({ err }, 'failed to update run');
     return NextResponse.json({ error: 'Failed to update run' }, { status: 500 });
   }
 }

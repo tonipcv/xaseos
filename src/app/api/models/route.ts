@@ -3,6 +3,9 @@ import { prisma } from '@/lib/db';
 import { getSession } from '@/lib/auth';
 import { DEFAULT_MODELS } from '@/types';
 import { createId } from '@/lib/utils';
+import { createRouteLogger } from '@/lib/logger';
+
+const log = createRouteLogger('/api/models');
 
 export async function GET() {
   const session = await getSession();
@@ -37,7 +40,7 @@ export async function PATCH(req: NextRequest) {
 
     return NextResponse.json({ ok: true });
   } catch (err) {
-    console.error(err);
+    log.error({ err }, 'failed to update model');
     return NextResponse.json({ error: 'Failed to update model' }, { status: 500 });
   }
 }
