@@ -149,4 +149,4 @@ Use the [bug report template](.github/ISSUE_TEMPLATE/bug_report.yml) and include
 
 ## License
 
-By contributing you agree your code will be released under the [MIT License](./LICENSE).
+By contributing you agree your code will be released under the [Apache License 2.0](./LICENSE).
