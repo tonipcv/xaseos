@@ -1,4 +1,4 @@
-export type ModelProvider = 'openai' | 'anthropic' | 'google' | 'grok' | 'groq' | 'ollama' | 'qwen' | 'deepseek' | 'kimi';
+export type ModelProvider = 'openai' | 'anthropic' | 'google' | 'grok' | 'groq' | 'ollama' | 'qwen' | 'deepseek' | 'kimi' | 'huggingface';
 
 export interface LLMModel {
   id: string;
@@ -91,6 +91,10 @@ export const DEFAULT_MODELS: LLMModel[] = [
   // Kimi (Moonshot AI)
   { id: 'kimi-k2-0711-preview', name: 'Kimi K2', provider: 'kimi', enabled: true },
   { id: 'kimi-k1.5-32b-vision-preview', name: 'Kimi K1.5 32B Vision', provider: 'kimi', enabled: true },
+  // HuggingFace Inference (Serverless API)
+  { id: 'meta-llama/Llama-3.3-70B-Instruct', name: 'Llama 3.3 70B (HF)', provider: 'huggingface', enabled: true },
+  { id: 'mistralai/Mixtral-8x7B-Instruct-v0.1', name: 'Mixtral 8x7B (HF)', provider: 'huggingface', enabled: false },
+  { id: 'microsoft/Phi-4', name: 'Phi-4 (HF)', provider: 'huggingface', enabled: true },
 ];
 
 export const REVIEW_LABELS: { value: ReviewLabel; label: string; color: string }[] = [

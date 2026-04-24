@@ -28,6 +28,10 @@ export const MODEL_COSTS: Record<string, { input: number; output: number }> = {
   // Kimi (Moonshot AI) - pricing in CNY, converted to USD
   'kimi-k2-0711-preview': { input: 10, output: 50 }, // ~$1.39 / 1M input, ~$6.94 / 1M output
   'kimi-k1.5-32b-vision-preview': { input: 8, output: 32 }, // ~$1.11 / 1M input, ~$4.44 / 1M output
+  // HuggingFace Inference (pay-per-compute, approximate costs)
+  'meta-llama/Llama-3.3-70B-Instruct': { input: 0.8, output: 1.2 }, // ~$0.80 / 1M input, ~$1.20 / 1M output
+  'mistralai/Mixtral-8x7B-Instruct-v0.1': { input: 0.6, output: 0.9 },
+  'microsoft/Phi-4': { input: 0.2, output: 0.4 },
 };
 
 export function estimateCost(modelId: string, inputTokens: number, outputTokens: number): number {
@@ -94,6 +98,10 @@ export async function callLLM({ model, systemPrompt, userPrompt, apiKey }: LLMCa
         const resultKimi = await callKimi(model, systemPrompt, userPrompt, apiKey, startTime);
         await maybeCacheResult(model.id, systemPrompt, userPrompt, resultKimi);
         return resultKimi;
+      case 'huggingface':
+        const resultHf = await callHuggingFace(model, systemPrompt, userPrompt, apiKey, startTime);
+        await maybeCacheResult(model.id, systemPrompt, userPrompt, resultHf);
+        return resultHf;
       default:
         throw new Error(`Provider ${model.provider} not implemented`);
     }
@@ -318,6 +326,30 @@ async function callKimi(model: LLMModel, systemPrompt: string | undefined, userP
     body: JSON.stringify({ model: model.id, messages }),
   });
   if (!res.ok) throw new Error(`Kimi error: ${await res.text()}`);
+  const data = await res.json();
+  const input = data.usage?.prompt_tokens ?? 0;
+  const output = data.usage?.completion_tokens ?? 0;
+  return {
+    modelId: model.id, modelName: model.name, provider: model.provider,
+    content: data.choices[0].message.content,
+    latencyMs: Date.now() - startTime,
+    tokensUsed: data.usage?.total_tokens, inputTokens: input, outputTokens: output,
+    cost: estimateCost(model.id, input, output),
+  };
+}
+
+// HuggingFace Inference - OpenAI compatible chat completions API
+async function callHuggingFace(model: LLMModel, systemPrompt: string | undefined, userPrompt: string, apiKey: string, startTime: number): Promise<ModelResponse> {
+  const messages = [] as Array<{ role: string; content: string }>;
+  if (systemPrompt) messages.push({ role: 'system', content: systemPrompt });
+  messages.push({ role: 'user', content: userPrompt });
+  // Use the chat completions endpoint for inference (OpenAI-compatible)
+  const res = await fetch(`https://api-inference.huggingface.co/models/${model.id}/v1/chat/completions`, {
+    method: 'POST',
+    headers: { 'Authorization': `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ model: model.id, messages, max_tokens: 2048 }),
+  });
+  if (!res.ok) throw new Error(`HuggingFace error: ${await res.text()}`);
   const data = await res.json();
   const input = data.usage?.prompt_tokens ?? 0;
   const output = data.usage?.completion_tokens ?? 0;

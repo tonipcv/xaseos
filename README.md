@@ -70,6 +70,7 @@ npm run dev                 # http://localhost:3002
 | **Qwen (Alibaba)** | Qwen Max, Qwen Plus, Qwen Turbo |
 | **DeepSeek** | DeepSeek V3, DeepSeek R1 |
 | **Kimi (Moonshot)** | Kimi K2, Kimi K1.5 32B Vision |
+| **HuggingFace** | Llama 3.3, Mixtral, Phi-4 (Serverless Inference) |
 | **Ollama** | Any locally-served model |
 
 ### Evaluation
