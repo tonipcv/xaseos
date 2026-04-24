@@ -67,6 +67,9 @@ npm run dev                 # http://localhost:3002
 | **Google** | Gemini 1.5 Pro, Gemini 1.5 Flash |
 | **Grok (xAI)** | Grok Beta |
 | **Groq** | Llama 3.3 70B, Mixtral 8x7B |
+| **Qwen (Alibaba)** | Qwen Max, Qwen Plus, Qwen Turbo |
+| **DeepSeek** | DeepSeek V3, DeepSeek R1 |
+| **Kimi (Moonshot)** | Kimi K2, Kimi K1.5 32B Vision |
 | **Ollama** | Any locally-served model |
 
 ### Evaluation

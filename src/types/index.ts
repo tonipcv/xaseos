@@ -1,4 +1,4 @@
-export type ModelProvider = 'openai' | 'anthropic' | 'google' | 'grok' | 'groq' | 'ollama';
+export type ModelProvider = 'openai' | 'anthropic' | 'google' | 'grok' | 'groq' | 'ollama' | 'qwen' | 'deepseek' | 'kimi';
 
 export interface LLMModel {
   id: string;
@@ -80,7 +80,17 @@ export const DEFAULT_MODELS: LLMModel[] = [
   { id: 'llama3.2', name: 'Llama 3.2', provider: 'ollama', enabled: false },
   { id: 'llama3.1', name: 'Llama 3.1', provider: 'ollama', enabled: false },
   { id: 'mistral', name: 'Mistral', provider: 'ollama', enabled: false },
-  { id: 'qwen2.5', name: 'Qwen 2.5', provider: 'ollama', enabled: false },
+  // Qwen (Alibaba Cloud)
+  { id: 'qwen-max', name: 'Qwen Max', provider: 'qwen', enabled: true },
+  { id: 'qwen-plus', name: 'Qwen Plus', provider: 'qwen', enabled: true },
+  { id: 'qwen-turbo', name: 'Qwen Turbo', provider: 'qwen', enabled: false },
+  { id: 'qwen2.5', name: 'Qwen 2.5 (Ollama)', provider: 'ollama', enabled: false },
+  // DeepSeek
+  { id: 'deepseek-chat', name: 'DeepSeek V3', provider: 'deepseek', enabled: true },
+  { id: 'deepseek-reasoner', name: 'DeepSeek R1', provider: 'deepseek', enabled: true },
+  // Kimi (Moonshot AI)
+  { id: 'kimi-k2-0711-preview', name: 'Kimi K2', provider: 'kimi', enabled: true },
+  { id: 'kimi-k1.5-32b-vision-preview', name: 'Kimi K1.5 32B Vision', provider: 'kimi', enabled: true },
 ];
 
 export const REVIEW_LABELS: { value: ReviewLabel; label: string; color: string }[] = [

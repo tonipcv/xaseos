@@ -18,6 +18,16 @@ export const MODEL_COSTS: Record<string, { input: number; output: number }> = {
   'grok-beta': { input: 5, output: 15 },
   'llama-3.3-70b-versatile': { input: 0.59, output: 0.79 },
   'mixtral-8x7b-32768': { input: 0.27, output: 0.27 },
+  // Qwen (Alibaba Cloud) - pricing per 1K tokens in CNY, converted to USD
+  'qwen-max': { input: 5, output: 10 }, // ~$0.0071 / 1K input, ~$0.014 / 1K output
+  'qwen-plus': { input: 0.8, output: 2 }, // ~$0.00114 / 1K input, ~$0.0029 / 1K output
+  'qwen-turbo': { input: 0.3, output: 0.6 }, // ~$0.00043 / 1K input, ~$0.00086 / 1K output
+  // DeepSeek - pricing in USD per 1M tokens
+  'deepseek-chat': { input: 0.14, output: 0.28 },
+  'deepseek-reasoner': { input: 0.14, output: 2.19 },
+  // Kimi (Moonshot AI) - pricing in CNY, converted to USD
+  'kimi-k2-0711-preview': { input: 10, output: 50 }, // ~$1.39 / 1M input, ~$6.94 / 1M output
+  'kimi-k1.5-32b-vision-preview': { input: 8, output: 32 }, // ~$1.11 / 1M input, ~$4.44 / 1M output
 };
 
 export function estimateCost(modelId: string, inputTokens: number, outputTokens: number): number {
@@ -72,6 +82,18 @@ export async function callLLM({ model, systemPrompt, userPrompt, apiKey }: LLMCa
         return resultGroq;
       case 'ollama':
         return await callOllama(model, systemPrompt, userPrompt, apiKey, startTime);
+      case 'qwen':
+        const resultQwen = await callQwen(model, systemPrompt, userPrompt, apiKey, startTime);
+        await maybeCacheResult(model.id, systemPrompt, userPrompt, resultQwen);
+        return resultQwen;
+      case 'deepseek':
+        const resultDeepSeek = await callDeepSeek(model, systemPrompt, userPrompt, apiKey, startTime);
+        await maybeCacheResult(model.id, systemPrompt, userPrompt, resultDeepSeek);
+        return resultDeepSeek;
+      case 'kimi':
+        const resultKimi = await callKimi(model, systemPrompt, userPrompt, apiKey, startTime);
+        await maybeCacheResult(model.id, systemPrompt, userPrompt, resultKimi);
+        return resultKimi;
       default:
         throw new Error(`Provider ${model.provider} not implemented`);
     }
@@ -236,5 +258,74 @@ async function callOllama(model: LLMModel, systemPrompt: string | undefined, use
     latencyMs: Date.now() - startTime,
     tokensUsed: input + output, inputTokens: input, outputTokens: output,
     cost: 0,
+  };
+}
+
+// Qwen (Alibaba Cloud) - OpenAI compatible API
+async function callQwen(model: LLMModel, systemPrompt: string | undefined, userPrompt: string, apiKey: string, startTime: number): Promise<ModelResponse> {
+  const messages = [] as Array<{ role: string; content: string }>;
+  if (systemPrompt) messages.push({ role: 'system', content: systemPrompt });
+  messages.push({ role: 'user', content: userPrompt });
+  const res = await fetch('https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions', {
+    method: 'POST',
+    headers: { 'Authorization': `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ model: model.id, messages }),
+  });
+  if (!res.ok) throw new Error(`Qwen error: ${await res.text()}`);
+  const data = await res.json();
+  const input = data.usage?.prompt_tokens ?? 0;
+  const output = data.usage?.completion_tokens ?? 0;
+  return {
+    modelId: model.id, modelName: model.name, provider: model.provider,
+    content: data.choices[0].message.content,
+    latencyMs: Date.now() - startTime,
+    tokensUsed: data.usage?.total_tokens, inputTokens: input, outputTokens: output,
+    cost: estimateCost(model.id, input, output),
+  };
+}
+
+// DeepSeek - OpenAI compatible API
+async function callDeepSeek(model: LLMModel, systemPrompt: string | undefined, userPrompt: string, apiKey: string, startTime: number): Promise<ModelResponse> {
+  const messages = [] as Array<{ role: string; content: string }>;
+  if (systemPrompt) messages.push({ role: 'system', content: systemPrompt });
+  messages.push({ role: 'user', content: userPrompt });
+  const res = await fetch('https://api.deepseek.com/chat/completions', {
+    method: 'POST',
+    headers: { 'Authorization': `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ model: model.id, messages }),
+  });
+  if (!res.ok) throw new Error(`DeepSeek error: ${await res.text()}`);
+  const data = await res.json();
+  const input = data.usage?.prompt_tokens ?? 0;
+  const output = data.usage?.completion_tokens ?? 0;
+  return {
+    modelId: model.id, modelName: model.name, provider: model.provider,
+    content: data.choices[0].message.content,
+    latencyMs: Date.now() - startTime,
+    tokensUsed: data.usage?.total_tokens, inputTokens: input, outputTokens: output,
+    cost: estimateCost(model.id, input, output),
+  };
+}
+
+// Kimi (Moonshot AI) - OpenAI compatible API
+async function callKimi(model: LLMModel, systemPrompt: string | undefined, userPrompt: string, apiKey: string, startTime: number): Promise<ModelResponse> {
+  const messages = [] as Array<{ role: string; content: string }>;
+  if (systemPrompt) messages.push({ role: 'system', content: systemPrompt });
+  messages.push({ role: 'user', content: userPrompt });
+  const res = await fetch('https://api.moonshot.cn/v1/chat/completions', {
+    method: 'POST',
+    headers: { 'Authorization': `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ model: model.id, messages }),
+  });
+  if (!res.ok) throw new Error(`Kimi error: ${await res.text()}`);
+  const data = await res.json();
+  const input = data.usage?.prompt_tokens ?? 0;
+  const output = data.usage?.completion_tokens ?? 0;
+  return {
+    modelId: model.id, modelName: model.name, provider: model.provider,
+    content: data.choices[0].message.content,
+    latencyMs: Date.now() - startTime,
+    tokensUsed: data.usage?.total_tokens, inputTokens: input, outputTokens: output,
+    cost: estimateCost(model.id, input, output),
   };
 }
