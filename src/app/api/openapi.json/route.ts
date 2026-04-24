@@ -7,7 +7,7 @@ const spec = {
     version: '0.2.0',
     description:
       'REST API for the Xase OS LLM evaluation and fine-tuning data platform.',
-    license: { name: 'MIT', url: 'https://github.com/tonipcv/xaseos/blob/main/LICENSE' },
+    license: { name: 'Apache 2.0', url: 'https://github.com/tonipcv/xaseos/blob/main/LICENSE' },
     contact: { name: 'Xase AI', url: 'https://github.com/tonipcv/xaseos' },
   },
   servers: [
